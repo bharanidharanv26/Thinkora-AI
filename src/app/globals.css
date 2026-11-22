@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #f7f9fa;
+  --color-foreground: #172b36;
+  --color-card: #ffffff;
+  --color-card-foreground: #172b36;
+  --color-primary: #087f80;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #eef4f7;
+  --color-secondary-foreground: #304c5e;
+  --color-muted: #f1f5f8;
+  --color-muted-foreground: #607381;
+  --color-accent: #e7f5f3;
+  --color-accent-foreground: #076665;
+  --color-destructive: #bd3446;
+  --color-border: #e2e9ee;
+  --color-input: #d4dfe6;
+  --color-ring: #087f80;
+  --font-sans: "Segoe UI", Arial, Helvetica, sans-serif;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.7rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+* { border-color: var(--color-border); box-sizing: border-box; }
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+body { background: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); margin: 0; }
+h1, h2, h3, p { overflow-wrap: break-word; }
+summary { touch-action: manipulation; }
+button, a, [role="button"] { touch-action: manipulation; }
+button, [role="button"] { user-select: none; -webkit-user-select: none; }
+input, textarea, select { font-size: 16px; }
+button:not(:disabled), summary, select { cursor: pointer; }
+button:active:not(:disabled) { filter: brightness(0.95); }
+:focus-visible { outline: 2px solid var(--color-ring); outline-offset: 3px; }
+::selection { background: #c8ebe6; }
+.safe-header { padding-top: env(safe-area-inset-top, 0px); }
+.safe-inline { padding-left: max(1rem, env(safe-area-inset-left, 0px)); padding-right: max(1rem, env(safe-area-inset-right, 0px)); }
+.safe-main { padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px)); padding-left: max(1rem, env(safe-area-inset-left, 0px)); padding-right: max(1rem, env(safe-area-inset-right, 0px)); }
+.safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+.compact-details > summary::-webkit-details-marker { display: none; }
+.compact-details > summary { list-style: none; }
+.compact-details[open] > summary .details-chevron { transform: rotate(180deg); }
+.prose-copy { line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.react-flow__node { font-family: var(--font-sans); }
+@media (min-width: 640px) {
+  .safe-inline, .safe-main { padding-left: max(1.5rem, env(safe-area-inset-left, 0px)); padding-right: max(1.5rem, env(safe-area-inset-right, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

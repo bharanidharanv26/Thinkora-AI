@@ -1,0 +1,36 @@
+import Link from "next/link";
+import { Users, School, BrainCircuit, Lightbulb, ArrowRight } from "lucide-react";
+import type { TeacherData } from "@/lib/server/dashboards";
+import type { Profile } from "@/lib/types";
+import { PageHeading, StatCard, EmptyState } from "@/components/shared";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { MasteryChart } from "@/components/charts";
+import { percent } from "@/lib/utils";
+
+export function TeacherDashboard({ profile, data, selectedClass }: { profile: Profile; data: TeacherData; selectedClass?: string }) {
+  const classroom = data.classes.find(c => c.id === selectedClass);
+  const students = classroom ? data.students.filter(s => data.requests.some(r => r.class_id === classroom.id && r.student_id === s.id && r.status === "approved")) : data.students;
+  const gaps = new Map<string, { name: string; scores: number[]; unassessed: number; students: Set<string> }>();
+  const misconceptions = new Map<string, { text: string; concept: string; students: Set<string> }>();
+  for (const student of students) {
+    for (const c of student.records.concepts) {
+      const m = student.records.mastery.find(m => m.concept_id === c.id);
+      const entry = gaps.get(c.id) ?? { name: c.title, scores: [], unassessed: 0, students: new Set<string>() };
+      if (m) { entry.scores.push(m.score); if (m.score < 0.5) entry.students.add(student.id); } else entry.unassessed++;
+      gaps.set(c.id, entry);
+    }
+    for (const m of student.records.misconceptions.filter(m => m.status === "active")) {
+      const key = `${m.concept_id}-${m.key}`;
+      const entry = misconceptions.get(key) ?? { text: m.description, concept: student.records.concepts.find(c => c.id === m.concept_id)?.title ?? "Concept", students: new Set<string>() };
+      entry.students.add(student.id); misconceptions.set(key, entry);
+    }
+  }
+  const gapsArray = [...gaps.entries()].map(([id, g]) => ({ id, ...g, average: g.scores.length ? g.scores.reduce((a, b) => a + b, 0) / g.scores.length : null })).sort((a, b) => (a.average ?? 1) - (b.average ?? 1));
+  const avg = students.length ? students.reduce((s, c) => s + c.progress, 0) / students.length : 0;
+  const activeMis = [...misconceptions.values()].sort((a, b) => b.students.size - a.students.size);
+  return <><PageHeading eyebrow={`TEACHER SPACE · ${profile.institution ?? ""}`} title={`Welcome, ${profile.display_name}.`} description="See how your students think. Find the gaps where your teaching can make the biggest difference." action={<Button asChild><Link href="/teacher/classes"><School />Manage classes</Link></Button>} /><nav aria-label="Filter teacher analytics by class" className="mb-6 flex flex-wrap gap-2"><Link href="/teacher" className={buttonVariants({ variant: !classroom ? "default" : "outline", size: "sm" })}>All classes</Link>{data.classes.map(c => <Link key={c.id} href={`/teacher?class=${c.id}`} className={buttonVariants({ variant: classroom?.id === c.id ? "default" : "outline", size: "sm" })}>{c.name}</Link>)}</nav><div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><StatCard icon={School} label="Your classes" value={data.classes.length} /><StatCard icon={Users} label="Connected students" value={students.length} blue /><StatCard icon={BrainCircuit} label="Concept completion" value={percent(avg)} detail="Average of enrolled concept mastery" /><StatCard icon={Lightbulb} label="Active learning gaps" value={activeMis.length} detail="Distinct observed misconceptions" blue /></div>
+    {!students.length ? <Card><EmptyState icon={Users} title="A clearer picture starts with a connection" description="Send a request using a Student ID or accept an incoming student request. Once connected, students see your published courses and you can view their progress." href="/teacher/students" label="Connect with students" /></Card> : <div className="space-y-6"><div className="grid gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>{classroom?.name ?? "Classroom"} · student progress</CardTitle><p className="text-xs leading-5 text-muted-foreground">Percentage of enrolled concepts that meet the mastery criteria.</p></CardHeader><CardContent><MasteryChart data={students.map(s => ({ name: s.display_name, value: Math.round(s.progress * 100) }))} /></CardContent></Card><Card><CardHeader><CardTitle>Class-wide concept understanding</CardTitle><p className="text-xs leading-5 text-muted-foreground">Average mastery among students with evidence. Unassessed concepts are excluded.</p></CardHeader><CardContent><MasteryChart data={gapsArray.filter(g => g.average !== null).slice(0, 12).map(g => ({ name: g.name, value: Math.round(g.average! * 100) }))} /></CardContent></Card></div><div className="grid items-start gap-6 lg:grid-cols-2"><Card><CardHeader><CardTitle>Topics needing additional teaching</CardTitle></CardHeader><CardContent>{gapsArray.some(g => (g.average !== null && g.average < 0.65) || g.students.size > 0) ? <div className="space-y-5">{gapsArray.filter(g => (g.average !== null && g.average < 0.65) || g.students.size > 0).map(g => <div key={g.id}><div className="mb-2 flex justify-between gap-3 text-sm"><span className="font-medium">{g.name}</span><span>{g.average === null ? "Unassessed" : percent(g.average)}</span></div><Progress value={(g.average ?? 0) * 100} /><p className="mt-2 text-xs text-muted-foreground">{g.students.size} student{g.students.size === 1 ? "" : "s"} below 50% mastery · {g.unassessed} not assessed</p></div>)}</div> : <p className="text-sm leading-6 text-muted-foreground">No assessed topics currently fall below the teaching-support threshold.</p>}</CardContent></Card><Card><CardHeader><CardTitle>Common misconceptions</CardTitle></CardHeader><CardContent>{activeMis.length ? <div className="space-y-3">{activeMis.map((m, i) => <div key={i} className="rounded-lg border p-4"><div className="flex flex-wrap justify-between gap-2"><p className="text-xs font-semibold text-primary">{m.concept}</p><Badge tone="amber">{m.students.size} student{m.students.size === 1 ? "" : "s"}</Badge></div><p className="mt-2 text-sm leading-6">{m.text}</p></div>)}</div> : <p className="text-sm leading-6 text-muted-foreground">No active misconceptions have been recorded for these students.</p>}</CardContent></Card></div><Card><CardHeader><CardTitle>Connected students</CardTitle></CardHeader><CardContent><div className="divide-y">{students.map(s => <div className="flex flex-col justify-between gap-3 py-4 sm:flex-row sm:items-center" key={s.id}><div><h3 className="text-sm font-semibold">{s.display_name}</h3><p className="mt-1 text-xs text-muted-foreground">{s.student_code} · {s.records.enrollments.length} enrolled course{s.records.enrollments.length === 1 ? "" : "s"}</p></div><div className="flex items-center gap-4"><Badge tone="teal">{percent(s.progress)} complete</Badge><Button variant="outline" size="sm" asChild><Link href={`/teacher/students/${s.id}`}>View progress<ArrowRight /></Link></Button></div></div>)}</div></CardContent></Card></div>}</>;
+}
